@@ -7,10 +7,12 @@ import com.nbcamp.coffeeordersystem.domain.menu.repository.MenuRepository;
 import com.nbcamp.coffeeordersystem.domain.order.dto.CreateOrderRequest;
 import com.nbcamp.coffeeordersystem.domain.order.dto.CreateOrderResponse;
 import com.nbcamp.coffeeordersystem.domain.order.entity.Order;
+import com.nbcamp.coffeeordersystem.domain.order.event.OrderCompletedEvent;
 import com.nbcamp.coffeeordersystem.domain.order.repository.OrderRepository;
 import com.nbcamp.coffeeordersystem.domain.user.entity.User;
 import com.nbcamp.coffeeordersystem.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class OrderService {
     private final MenuRepository menuRepository;
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public CreateOrderResponse createOrder(CreateOrderRequest request) {
@@ -46,6 +49,11 @@ public class OrderService {
         // 4. 주문 저장: 메뉴 이름과 가격이 Snapshot으로 남음
         Order order = new Order(user, menu, LocalDateTime.now());
         orderRepository.save(order);
+
+        // 5. 주문 완료 이벤트 발행: 실제 전송은 커밋이 확정된 뒤 리스너가 수행한다
+        eventPublisher.publishEvent(
+                new OrderCompletedEvent(user.getId(), menu.getId(), order.getPaymentAmount())
+        );
 
         // 메서드가 끝나면 포인트 차감과 주문 저장이 함께 커밋되고 락이 풀린다
         return CreateOrderResponse.of(order, user);
