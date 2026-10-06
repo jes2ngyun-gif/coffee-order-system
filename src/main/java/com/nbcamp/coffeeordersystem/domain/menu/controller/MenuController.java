@@ -1,4 +1,4 @@
-package com.nbcamp.coffeeordersystem.domain.menu.domain.menu.controller;
+package com.nbcamp.coffeeordersystem.domain.menu.controller;
 
 
 import com.nbcamp.coffeeordersystem.domain.menu.dto.MenuResponse;
