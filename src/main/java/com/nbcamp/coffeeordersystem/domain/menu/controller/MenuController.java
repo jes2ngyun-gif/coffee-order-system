@@ -2,6 +2,7 @@ package com.nbcamp.coffeeordersystem.domain.menu.controller;
 
 
 import com.nbcamp.coffeeordersystem.domain.menu.dto.MenuResponse;
+import com.nbcamp.coffeeordersystem.domain.menu.dto.PopularMenuResponse;
 import com.nbcamp.coffeeordersystem.domain.menu.service.MenuService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,5 +22,10 @@ public class MenuController {
     @GetMapping
     public ResponseEntity<List<MenuResponse>> getMenus() {
         return ResponseEntity.ok(menuService.findMenus());
+    }
+
+    @GetMapping("/popular")
+    public ResponseEntity<List<PopularMenuResponse>> getPopularMenus() {
+        return ResponseEntity.ok(menuService.findPopularMenus());
     }
 }
