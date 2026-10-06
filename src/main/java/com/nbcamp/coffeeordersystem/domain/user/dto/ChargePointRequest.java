@@ -1,4 +1,9 @@
 package com.nbcamp.coffeeordersystem.domain.user.dto;
 
-public class ChargePointRequest {
+import jakarta.validation.constraints.NotNull;
+
+public record ChargePointRequest(
+        @NotNull Long userId,
+        @NotNull Long amount
+) {
 }
