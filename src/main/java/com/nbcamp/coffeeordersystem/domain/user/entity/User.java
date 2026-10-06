@@ -36,4 +36,17 @@ public class User extends BaseTimeEntity {
         }
         this.pointBalance = this.pointBalance + amount;
     }
+
+    // 포인트 사용
+    public void usePoint(Long amount) {
+        if (amount == null || amount <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (this.pointBalance < amount) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_POINT);
+        }
+
+        this.pointBalance = this.pointBalance - amount;
+    }
 }
