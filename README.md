@@ -57,10 +57,6 @@ ERD·API 설계부터 트랜잭션 처리, 비관적 락 기반 동시성 제어
 
 ### 주문·결제 흐름
 
-## 3. 핵심 흐름
-
-### 주문·결제 흐름
-
 ```mermaid
 flowchart TD
     A["POST /api/orders"] --> B
@@ -433,9 +429,87 @@ sql
 
 ---
 
+## 11. 한계 및 개선 방향
 
+| 현재 한계 | 개선 방향 |
+| --- | --- |
+| 동시성 테스트를 서버 1대의 멀티스레드로만 검증했고, 인스턴스 2대 이상에서는 실행해 보지 못함 | 같은 DB를 바라보는 인스턴스 2대를 띄워 동시 요청 검증 |
+| 같은 주문 요청이 반복되면 중복 결제가 발생할 수 있음 | `Idempotency-Key`를 도입해 동일 요청의 중복 처리 방지 |
+| 외부 전송이 실패하거나 Commit 직후 서버가 종료되면 이벤트가 유실되고 재전송되지 않음 | Transactional Outbox와 재시도 또는 Message Queue 도입 |
+| 외부 전송이 동기 방식이라 실제 외부 API가 지연되면 주문 응답도 지연됨 | 비동기 처리 또는 별도 전송 Worker 구성 |
+| 같은 사용자의 요청이 몰리면 Row Lock 대기 시간이 길어질 수 있음 | 락 타임아웃 정책을 설정하고, 타임아웃 발생 시 예외 응답을 정의 |
+| 인기 메뉴를 조회할 때마다 최근 7일 주문을 매번 집계함 | 데이터 증가 시 일별 집계 구조를 검토하거나, 허용 가능한 최신성 범위가 있다면 짧은 TTL의 Redis Cache 적용 |
+| 포인트의 현재 잔액만 저장해 변경 이력을 확인할 수 없음 | `PointHistory`를 분리해 충전·사용 이력 기록 |
+| 인기 메뉴 조회와 외부 전송 실패 상황은 자동 테스트가 없음 | 7일 경계·동률 테스트와 전송 실패를 가정한 테스트 추가 |
 
+---
 
+## 12. 개발 및 Git 관리
+
+개인 과제이므로 `main` 단일 브랜치에서 작업했으며, 기능·설정·테스트 등 하나의 변경 목적이 명확해질 때 단위별로 커밋했습니다.
+
+| Type | 용도 | 실제 커밋 예시 |
+| --- | --- | --- |
+| `chore` | 프로젝트 설정 | `chore: initialize coffee order system project` |
+| `feat` | 기능 구현 | `feat: implement point charge API with pessimistic lock` |
+| `refactor` | 구조 변경 | `refactor: move MenuController to menu controller package` |
+| `test` | 테스트 | `test: add order concurrency test` |
+| `docs` | 문서 | `docs: add README draft with design and test results` |
+
+DB 비밀번호는 `.env`로 분리하고 `.gitignore`에 등록해 저장소에 포함되지 않도록 관리했습니다.
+
+---
+
+## 13. 실행 방법
+
+### 요구 사항
+
+- Java 17
+- MySQL 8.x
+
+### 1. 데이터베이스 준비
+
+MySQL 관리자 계정으로 데이터베이스와 애플리케이션 계정을 만듭니다.
+
+```sql
+CREATE DATABASE coffee_order;
+CREATE DATABASE coffee_order_test;
+
+CREATE USER 'coffee'@'localhost' IDENTIFIED BY '<your-password>';
+
+GRANT ALL PRIVILEGES ON coffee_order.* TO 'coffee'@'localhost';
+GRANT ALL PRIVILEGES ON coffee_order_test.* TO 'coffee'@'localhost';
+```
+
+이어서 `sql/schema.sql` → `sql/data.sql` 순서로 실행해 애플리케이션 테이블과 초기 데이터를 생성합니다.
+
+### 2. 환경 변수 설정
+
+프로젝트 루트에 `.env` 파일을 만들고 위에서 설정한 MySQL 비밀번호를 입력합니다.
+
+```properties
+DB_PASSWORD=<your-password>
+```
+
+`.env`는 `.gitignore`에 포함되어 저장소에 커밋되지 않습니다.
+
+### 3. 애플리케이션 실행
+
+```bash
+./gradlew bootRun
+```
+
+기본적으로 `http://localhost:8080`에서 실행됩니다.
+
+### 4. 테스트 실행
+
+```bash
+./gradlew test
+```
+
+동시성 테스트는 개발 DB와 분리된 `coffee_order_test`에서 실행됩니다.
+
+테스트 환경에서는 `ddl-auto: create`를 사용하므로 Spring 테스트 컨텍스트가 시작될 때 Entity를 기준으로 테스트 테이블이 자동 생성됩니다.
 
 
 
